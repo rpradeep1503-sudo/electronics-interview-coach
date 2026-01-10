@@ -1,0 +1,115 @@
+import sys
+sys.modules.pop("utils.evaluator", None)
+
+import os 
+from dotenv import load_dotenv 
+import streamlit as st 
+import random 
+from utils.evaluator import AnswerEvaluator 
+from utils.vector_store import initialize_vector_store 
+ 
+# Load environment variables 
+load_dotenv() 
+ 
+# Initialize components 
+evaluator = AnswerEvaluator() 
+vector_store = initialize_vector_store() 
+ 
+# Page config 
+st.set_page_config( 
+    page_title="Electronics Interview Coach", 
+    page_icon="??", 
+    layout="wide" 
+) 
+ 
+# Questions database 
+QUESTIONS = [ 
+    { 
+        "id": 1, 
+        "category": "digital_design", 
+        "difficulty": "medium", 
+        "question": "Explain setup and hold time in flip-flops with timing diagrams.", 
+        "model_answer": "Setup time is the minimum time before the clock edge that data must be stable. Hold time is the minimum time after the clock edge that data must remain stable. Violations cause metastability.", 
+        "key_points": ["definition", "timing diagram", "violation consequences"], 
+        "follow_up": "What happens during setup time violation?" 
+    }, 
+    { 
+        "id": 2, 
+        "category": "analog_circuits", 
+        "difficulty": "hard", 
+        "question": "Compare BJT and MOSFET transistors.", 
+        "model_answer": "BJT is current-controlled, MOSFET is voltage-controlled. BJT has lower input impedance, MOSFET has near-infinite input impedance.", 
+        "key_points": ["current vs voltage control", "input impedance", "applications"], 
+        "follow_up": "Why is MOSFET preferred in digital circuits?" 
+    } 
+] 
+ 
+# Initialize session state 
+if 'current_index' not in st.session_state: 
+    st.session_state.current_index = 0 
+if 'user_score' not in st.session_state: 
+    st.session_state.user_score = 0 
+ 
+# Main app 
+st.title("?? Electronics Interview Coach") 
+st.markdown("Practice electronics interview questions with AI feedback") 
+st.markdown("---") 
+ 
+# Get current question 
+current_q = QUESTIONS[st.session_state.current_index] 
+ 
+st.subheader("?? Question") 
+st.write(f"**{current_q['question']}**") 
+st.caption(f"Category: {current_q['category']}   Difficulty: {current_q['difficulty']}") 
+ 
+user_answer = st.text_area("?? Your Answer:", height=150, placeholder="Type your detailed answer here...") 
+ 
+col1, col2, col3 = st.columns(3) 
+with col1: 
+    submit_btn = st.button("? Submit Answer", type="primary", use_container_width=True) 
+with col2: 
+    feedback_btn = st.button("?? Get AI Feedback", use_container_width=True) 
+with col3: 
+    next_btn = st.button("?? Next Question", use_container_width=True) 
+ 
+# Handle buttons 
+if submit_btn: 
+    if len(user_answer.strip()) >= 20:
+
+        st.success("? Answer submitted! Click 'Get AI Feedback' for evaluation.") 
+    else: 
+        st.warning("?? Please write a more detailed answer (minimum 20 characters).") 
+ 
+if feedback_btn: 
+    if len(user_answer.strip()) 
+        with st.spinner("AI is evaluating your answer..."): 
+            try: 
+                feedback = evaluator.evaluate_answer( 
+                    question=current_q['question'], 
+                    model_answer=current_q['model_answer'], 
+                    user_answer=user_answer, 
+                    category=current_q['category'], 
+                    difficulty=current_q['difficulty'] 
+                ) 
+                st.metric("?? Score", feedback.get('score', 'N/A')) 
+                st.write("? **Strengths:**") 
+                strengths = feedback.get('strengths', []) 
+                if isinstance(strengths, list): 
+                    for point in strengths: 
+                        st.success(f"  {point}") 
+                else: 
+                    st.info(strengths) 
+            except Exception as e: 
+                st.error(f"Error: {str(e)}") 
+                st.info("Using simulated feedback for now...") 
+                st.metric("?? Score", f"{random.randint(6, 9)}/10") 
+    else: 
+        st.warning("?? Please write a more detailed answer (minimum 20 characters) to get AI feedback.") 
+ 
+if next_btn: 
+    st.session_state.current_index = (st.session_state.current_index + 1) % len(QUESTIONS) 
+    st.rerun() 
+ 
+# Footer 
+st.markdown("---") 
+st.caption("Electronics Interview Coach v1.0   Built with Streamlit & OpenAI") 
